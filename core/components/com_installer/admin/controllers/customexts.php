@@ -198,21 +198,6 @@ class Customexts extends AdminController
 
 		$pagination = new \Hubzero\Pagination\Paginator($total, $start, $limit);
 
-		// Get the form.
-		\Hubzero\Form\Form::addFormPath(dirname(__DIR__) . '/models/forms');
-		\Hubzero\Form\Form::addFieldPath(dirname(__DIR__) . '/models/fields');
-		$form = new \Hubzero\Form\Form('manage');
-		$form->loadFile(dirname(__DIR__) . '/models/forms/manage.xml', false, '//form');
-
-		// Check the session for previously entered form data.
-		$data = User::getState($this->_option . '.data', array());
-
-		// Bind the form data if present.
-		if (!empty($data))
-		{
-			$form->bind($data);
-		}
-
 		// Check if there are no matching items
 		if (!count($rows))
 		{
@@ -224,7 +209,6 @@ class Customexts extends AdminController
 			->set('rows', $rows)
 			->set('pagination', $pagination)
 			->set('filters', $filters)
-			->set('form', $form)
 			->display();
 	}
 
@@ -273,10 +257,28 @@ class Customexts extends AdminController
 		$row->set('modified', Date::of('now')->toSql());
 		$row->set('modified', null);
 
+
+
+		// Get the form.
+		\Hubzero\Form\Form::addFormPath(dirname(__DIR__) . '/models/forms');
+		// \Hubzero\Form\Form::addFieldPath(dirname(__DIR__) . '/models/fields');
+		$form = new \Hubzero\Form\Form('customexts');
+		$form->loadFile(dirname(__DIR__) . '/models/forms/customexts.xml', false, '//form');
+
+		// Check the session for previously entered form data.
+		$data = User::getState($this->_option . '.data', array());
+
+		// Bind the form data if present.
+		if (!empty($data))
+		{
+			$form->bind($data);
+		}
+
 		// Output the view
 		$this->view
 			->set('row', $row)
 			->setLayout('edit')
+			->set('form', $form)
 			->display();
 	}
 
@@ -347,10 +349,10 @@ class Customexts extends AdminController
 		// Set path
 		if ($model->folder)
 		{
-			$model->set('path', PATH_APP . "/" . $path_type . "/" . $model->folder . "/"  . $model->name);
+			$model->set('path', PATH_APP . "/" . $path_type . "/" . $model->folder . "/"  . $model->alias);
 		}
 		else {
-			$model->set('path', PATH_APP . "/" . $path_type . "/"  . $model->name);
+			$model->set('path', PATH_APP . "/" . $path_type . "/"  . $model->alias);
 		}
 
 		// Validate and save the data
@@ -410,7 +412,7 @@ class Customexts extends AdminController
 						{
 							$user = Component::params('com_installer')->get('system_user', 'hubadmin');
 						}
-						// The tasks and command to be perofmred
+						// The tasks and command to be performed
 						$task = 'repository';
 						$museCmd = 'renameRepo currPath=' . $extdir . '/__' . $repodir . ' targetPath=' . $model->path;
 
@@ -534,9 +536,19 @@ class Customexts extends AdminController
 				{
 					$user = Component::params('com_installer')->get('system_user', 'hubadmin');
 				}
+
 				// The tasks and command to be perofmred
 				$task = 'repository';
-				$museCmd = 'cloneRepo repoPath=' . $extension->path . ' sourceUrl=' . $extension->get('url');
+
+				if ($extension->get('apikey'))
+				{
+					$newURL = "https://oauth2:" . $extension->get('apikey') . "@" . parse_url($extension->get('url'),PHP_URL_HOST) . parse_url($extension->get('url'),PHP_URL_PATH);
+					$museCmd = 'cloneRepo repoPath=' . $extension->path . ' sourceUrl=' . $newURL;
+				}
+				else
+				{
+					$museCmd = 'cloneRepo repoPath=' . $extension->path . ' sourceUrl=' . $extension->get('url');
+				}
 
 				// Run as (hubadmin)
 				$sudo =  '/usr/bin/sudo -u ' . $user . ' ';
@@ -546,6 +558,7 @@ class Customexts extends AdminController
 
 				// execute command
 				$output = shell_exec($cmd);
+
 			}
 
 			if (!isset($user))
@@ -555,7 +568,15 @@ class Customexts extends AdminController
 
 			// The tasks and command to be perofmred
 			$task = 'repository';
-			$museCmd = 'update -r=' . $extension->path;
+
+			if ($extension->get('apikey'))
+			{
+				$museCmd = 'update -r=' . $extension->path . ' apikey=' . $extension->get('apikey');
+			}
+			else
+			{
+				$museCmd = 'update -r=' . $extension->path;
+			}
 
 			// Run as (hubadmin)
 			$sudo =  '/usr/bin/sudo -u ' . $user . ' ';

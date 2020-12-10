@@ -1283,23 +1283,30 @@ class Groups extends Base
 	 */
 	public function memberslistTask()
 	{
+		// Check if they're logged in
+		if (User::isGuest())
+		{
+			return $this->loginTask();
+		}
+		
 		// Fetch results
 		$filters = array();
 		$filters['cn'] = trim(Request::getString('group', ''));
 
+		// Limit number of returned rows because PHP runs out of memory and the hub fails with large numbers
 		if ($filters['cn'])
 		{
 			$query = "SELECT u.username, u.name
 						FROM `#__users` AS u, `#__xgroups_members` AS m, `#__xgroups` AS g
 						WHERE g.cn=" . $this->database->quote($filters['cn']) . " AND g.gidNumber=m.gidNumber AND m.uidNumber=u.id AND u.block = '0'
-						ORDER BY u.name ASC";
+						ORDER BY u.name ASC LIMIT 10000";
 		}
 		else
 		{
 			$query = "SELECT a.username, a.name
 						FROM `#__users` AS a
-						WHERE a.block = '0' AND g.id=25
-						ORDER BY a.name";
+						WHERE a.block = '0'
+						ORDER BY a.name LIMIT 10000";
 		}
 
 		$this->database->setQuery($query);
@@ -1410,7 +1417,7 @@ class Groups extends Base
 			if (($access == 'members' && !in_array(User::get('id'), $group->get('members')))
 			 || ($access == 'registered' && User::isGuest()))
 			{
-				$this->_errorHandler(403, Lang::txt('COM_GROUPS_ERROR_NOT_AUTH') . ' ' . $file);
+				$this->_errorHandler(403, Lang::txt('COM_GROUPS_ERROR_NOT_AUTH'));
 			}
 
 			// Load wiki page from db
@@ -1439,7 +1446,7 @@ class Groups extends Base
 			// Check specific wiki page access
 			if ($page->get('access') == 1 && !in_array(User::get('id'), $group->get('members')) && $authorized != 'admin')
 			{
-				$this->_errorHandler(403, Lang::txt('COM_GROUPS_ERROR_NOT_AUTH') . ' ' . $file);
+				$this->_errorHandler(403, Lang::txt('COM_GROUPS_ERROR_NOT_AUTH'));
 				return;
 			}
 
@@ -1456,7 +1463,7 @@ class Groups extends Base
 			if (($access == 'members' && !in_array(User::get('id'), $group->get('members')))
 			 || ($access == 'registered' && User::isGuest()))
 			{
-				$this->_errorHandler(403, Lang::txt('COM_GROUPS_ERROR_NOT_AUTH') . ' ' . $file);
+				$this->_errorHandler(403, Lang::txt('COM_GROUPS_ERROR_NOT_AUTH'));
 			}
 
 			// Make sure we have a group id of the proper length
@@ -1478,7 +1485,7 @@ class Groups extends Base
 			if (($access == 'members' && !in_array(User::get('id'), $group->get('members')))
 			 || ($access == 'registered' && User::isGuest()))
 			{
-				$this->_errorHandler(403, Lang::txt('COM_GROUPS_ERROR_NOT_AUTH') . ' ' . $file);
+				$this->_errorHandler(403, Lang::txt('COM_GROUPS_ERROR_NOT_AUTH'));
 			}
 
 			// Build the path
@@ -1510,7 +1517,7 @@ class Groups extends Base
 		{
 			if ($alt_file_path == null || !file_exists(PATH_APP . DS . $alt_file_path))
 			{
-				$this->_errorHandler(404, Lang::txt('COM_GROUPS_ERROR_FILE_NOT_FOUND') . ' ' . $file);
+				$this->_errorHandler(404, Lang::txt('COM_GROUPS_ERROR_FILE_NOT_FOUND'));
 				return;
 			}
 			else
@@ -1526,7 +1533,7 @@ class Groups extends Base
 			// Make sure requested file is within acceptable dir
 			if (strpos($realPath, $pathCheck) === false)
 			{
-				$this->_errorHandler(404, Lang::txt('COM_GROUPS_ERROR_FILE_NOT_FOUND') . ' ' . $file);
+				$this->_errorHandler(403, Lang::txt('COM_GROUPS_ERROR_NOT_AUTH'));
 				return;
 			}
 		}
